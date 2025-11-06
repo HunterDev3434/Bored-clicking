@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Points Counter</title>
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background-color: #0b0b0b;
+      color: white;
+      font-family: Arial, sans-serif;
+    }
+    h1 {
+      font-size: 3rem;
+      margin-bottom: 20px;
+    }
+    button {
+      font-size: 1.5rem;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 10px;
+      background-color: #007bff;
+      color: white;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+  </style>
+</head>
+<body>
+  <h1>Points: <span id="points">0</span></h1>
+  <button id="addBtn">Add Point</button>
+
+  <script>
+    let points = 0;
+    const display = document.getElementById("points");
+    const btn = document.getElementById("addBtn");
+
+    btn.addEventListener("click", () => {
+      points++;
+      display.textContent = points;
+    });
+  </script>
+</body>
+</html>
