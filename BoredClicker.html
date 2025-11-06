@@ -1,121 +1,189 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Idle Clicker Simulator</title>
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      background: #0b0b0b;
-      color: white;
-      font-family: Arial, sans-serif;
-      display: flex;
-      height: 100vh;
-      overflow: hidden;
-    }
-    .left {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-    }
-    .right {
-      width: 300px;
-      background: #111;
-      border-left: 2px solid #222;
-      padding: 20px;
-      overflow-y: auto;
-    }
-    h1 {
-      font-size: 2rem;
-      margin-bottom: 20px;
-    }
-    button {
-      font-size: 1.3rem;
-      padding: 15px 25px;
-      border: none;
-      border-radius: 10px;
-      background-color: #007bff;
-      color: white;
-      cursor: pointer;
-      transition: 0.2s;
-    }
-    button:hover {
-      background-color: #0056b3;
-    }
-    .upgrade {
-      background-color: #222;
-      border: 1px solid #333;
-      padding: 10px;
-      border-radius: 8px;
-      margin-bottom: 10px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .upgrade button {
-      font-size: 1rem;
-      padding: 5px 10px;
-      border-radius: 6px;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>Idle Clicker Simulator</title>
+<style>
+body { margin:0; padding:0; background:#0b0b0b; color:white; font-family:Arial,sans-serif; display:flex; height:100vh; overflow:hidden; position:relative;}
+.left { flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center; position:relative;}
+#pointsDisplay { font-size:5rem; font-weight:bold; position:relative;}
+#clickBtn { font-size:2rem; margin-top:20px; padding:20px 40px; border-radius:12px; background-color:#007bff; border:none; cursor:pointer;}
+.rightPanel { width:300px; background:#111; border-left:2px solid #222; padding:20px; overflow-y:auto; display:none; flex-direction:column; position:absolute; right:0; top:0; height:100%;}
+.upgrade { background-color:#222; border:1px solid #333; padding:10px; border-radius:8px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; position:relative;}
+.upgrade button { font-size:1rem; padding:5px 10px; border-radius:6px;}
+.floating { position:absolute; font-weight:bold; color:#0f0; pointer-events:none; animation: floatUp 1s ease-out forwards;}
+@keyframes floatUp {0% {opacity:1; transform: translateY(0);} 100% {opacity:0; transform: translateY(-50px);}}
+#shopToggle { position:absolute; right:10px; top:10px; font-size:1.5rem; width:40px; height:40px; cursor:pointer;}
+#perkSpawn { position:absolute; background-color:gold; color:black; font-weight:bold; padding:10px; border-radius:50%; display:none; cursor:pointer; z-index:100; text-align:center;}
+.autoUpgradeBtn { position:absolute; right:5px; top:5px; font-size:1rem; cursor:pointer; background-color:#0a0; border:none; border-radius:4px; padding:2px 5px;}
+.autoUpgradePanel { display:none; flex-direction:column; margin-top:10px;}
+.dropdown { background-color:#333; padding:5px; margin-top:3px; display:none; flex-direction:column; border-radius:6px;}
+.dropdown .upgrade { margin-bottom:3px; padding:5px;}
+.dropdownBtn { background:none; border:none; color:#0f0; cursor:pointer; font-size:0.9rem; text-align:left; padding:2px;}
+</style>
 </head>
 <body>
-  <div class="left">
-    <h1>Points: <span id="points">0</span></h1>
-    <button id="addBtn">Click Me</button>
-  </div>
-  <div class="right">
-    <h2>Shop</h2>
-    <div id="shop"></div>
-  </div>
+<div class="left">
+  <div id="pointsDisplay">0</div>
+  <button id="clickBtn">+</button>
+  <div id="shopToggle">⯈</div>
+</div>
 
-  <script>
-    let points = 0;
-    let clickPower = 1;
-    const display = document.getElementById("points");
-    const btn = document.getElementById("addBtn");
-    const shop = document.getElementById("shop");
+<div class="rightPanel" id="shopPanel">
+  <h2>Shop</h2>
+  <div id="shop"></div>
+</div>
 
-    const upgrades = [
-      { name: "Double Click Power", cost: 50, effect: () => { clickPower *= 2; } },
-      { name: "Auto Clicker", cost: 100, effect: () => { setInterval(() => addPoints(1), 1000); } },
-      { name: "Super Finger", cost: 500, effect: () => { clickPower += 10; } },
+<div id="perkSpawn">💰</div>
+
+<script>
+let points = 0;
+let clickPower = 1;
+const pointsDisplay = document.getElementById("pointsDisplay");
+const clickBtn = document.getElementById("clickBtn");
+
+const shopPanel = document.getElementById("shopPanel");
+const shopToggle = document.getElementById("shopToggle");
+const perkSpawn = document.getElementById("perkSpawn");
+
+const autoClicker = { active:false, pointsPerTick:1, speed:1000, interval:null };
+
+// Upgrade definitions
+const upgrades = [
+  { name: "+1 Click", baseCost:50, level:0, effect:()=>clickPower+=1, repeatable:true },
+  { name: "Double Click", cost:300, active:false, effect:()=>clickPower*=2, repeatable:false },
+  { name: "Auto Clicker", cost:500, active:false, effect:()=>{
+      autoClicker.active=true; createAutoUpgradeButton(); startAutoClicker();
+  }, repeatable:false }
+];
+
+// Points add
+function addPoints(amount){
+  points+=amount;
+  pointsDisplay.textContent=points;
+  const float=document.createElement("div");
+  float.className="floating";
+  float.style.left = pointsDisplay.offsetLeft + pointsDisplay.offsetWidth/2 + (Math.random()*60-30) + "px";
+  float.style.top = pointsDisplay.offsetTop + "px";
+  float.textContent=`+${amount}`;
+  document.body.appendChild(float);
+  setTimeout(()=>float.remove(),1000);
+  updateShop();
+}
+
+// Update shop
+function updateShop(){
+  const shopDiv = document.getElementById("shop");
+  shopDiv.innerHTML="";
+  upgrades.forEach((u,index)=>{
+    const div=document.createElement("div");
+    div.className="upgrade";
+    let cost = u.repeatable ? Math.floor(u.baseCost*Math.pow(1.15,u.level)) : u.cost;
+    const canBuy = points>=cost && (!u.bought || u.repeatable);
+    div.innerHTML=`<span>${u.name} - ${cost} pts</span><button ${canBuy?"":"disabled"}>Buy</button>`;
+    const btn = div.querySelector("button");
+    btn.addEventListener("click", ()=>{
+      if(points>=cost){
+        points-=cost;
+        if(u.repeatable) u.level++;
+        else u.bought = true;
+        u.effect();
+        if(u.name==="Auto Clicker" && !document.querySelector(".autoUpgradeBtn")){
+          createAutoUpgradeButton();
+          startAutoClicker();
+        }
+        updateShop();
+        pointsDisplay.textContent=points;
+      }
+    });
+    shopDiv.appendChild(div);
+  });
+}
+
+// Click button
+clickBtn.addEventListener("click",()=>addPoints(clickPower));
+
+// Shop toggle — arrow disappears when open
+shopToggle.addEventListener("click",()=>{
+  if(shopPanel.style.display==="flex"){
+    shopPanel.style.display="none";
+    shopToggle.style.display="block";
+  } else {
+    shopPanel.style.display="flex";
+    shopToggle.style.display="none";
+  }
+});
+
+// Auto clicker
+function startAutoClicker(){
+  if(autoClicker.interval) clearInterval(autoClicker.interval);
+  autoClicker.interval=setInterval(()=>{
+    if(autoClicker.active) addPoints(autoClicker.pointsPerTick);
+  },autoClicker.speed);
+}
+
+// Auto upgrade panel
+function createAutoUpgradeButton(){
+  const shopDiv=document.getElementById("shop");
+  const autoDiv=Array.from(shopDiv.children).find(d=>d.querySelector("span").textContent.includes("Auto Clicker"));
+  if(!autoDiv.querySelector(".autoUpgradeBtn")){
+    const arrow=document.createElement("button");
+    arrow.className="autoUpgradeBtn"; arrow.textContent="⯈"; autoDiv.appendChild(arrow);
+
+    const upgradePanel=document.createElement("div"); upgradePanel.className="autoUpgradePanel";
+
+    const dropdowns=[
+      { title:"Speed", upgrades:5 },
+      { title:"Points per Tick", upgrades:5 }
     ];
 
-    function addPoints(amount) {
-      points += amount;
-      display.textContent = points;
-      updateShop();
-    }
-
-    function updateShop() {
-      shop.innerHTML = "";
-      upgrades.forEach((u) => {
-        const div = document.createElement("div");
-        div.className = "upgrade";
-        div.innerHTML = `
-          <span>${u.name} - ${u.cost} pts</span>
-          <button ${points < u.cost ? "disabled" : ""}>Buy</button>
-        `;
-        const btn = div.querySelector("button");
-        btn.addEventListener("click", () => {
-          if (points >= u.cost) {
-            points -= u.cost;
-            u.effect();
-            upgrades.splice(upgrades.indexOf(u), 1); // remove after buying
+    dropdowns.forEach((dd)=>{
+      const ddBtn=document.createElement("button");
+      ddBtn.className="dropdownBtn"; ddBtn.textContent=dd.title+" ⯈";
+      const ddPanel=document.createElement("div"); ddPanel.className="dropdown";
+      for(let i=1;i<=dd.upgrades;i++){
+        const up=document.createElement("div"); up.className="upgrade";
+        up.innerHTML=`<span>${dd.title} Upgrade ${i} - ${i*200} pts</span><button>Buy</button>`;
+        const btn=up.querySelector("button");
+        btn.addEventListener("click",()=>{
+          if(points>=i*200){
+            points-=i*200;
+            if(dd.title==="Speed") autoClicker.speed=Math.max(100,autoClicker.speed-50);
+            else if(dd.title==="Points per Tick") autoClicker.pointsPerTick+=i;
+            startAutoClicker();
             updateShop();
-            display.textContent = points;
           }
         });
-        shop.appendChild(div);
-      });
-    }
+        ddPanel.appendChild(up);
+      }
+      ddBtn.addEventListener("click",()=>{ ddPanel.style.display=ddPanel.style.display==="flex"?"none":"flex"; });
+      upgradePanel.appendChild(ddBtn);
+      upgradePanel.appendChild(ddPanel);
+    });
 
-    btn.addEventListener("click", () => addPoints(clickPower));
-    updateShop();
-  </script>
+    autoDiv.appendChild(upgradePanel);
+    arrow.addEventListener("click",()=>{ upgradePanel.style.display=upgradePanel.style.display==="flex"?"none":"flex"; });
+  }
+}
+
+// Perks
+const perkTypes=[
+  {name:"+Points", action:()=>addPoints(Math.floor(Math.random()*50)+10), color:"gold"},
+  {name:"Temp Auto Clicker", action:()=>{ autoClicker.active=true; setTimeout(()=>autoClicker.active=false,5000); }, color:"orange"},
+  {name:"Temp Super Click", action:()=>{ let old=clickPower; clickPower*=3; setTimeout(()=>clickPower=old,5000); }, color:"lightblue"}
+];
+function spawnPerk(){
+  const perk=perkTypes[Math.floor(Math.random()*perkTypes.length)];
+  perkSpawn.textContent=perk.name==="+Points"?"💰":perk.name[0];
+  perkSpawn.style.backgroundColor=perk.color;
+  perkSpawn.style.left=Math.random()*(window.innerWidth-50)+"px";
+  perkSpawn.style.top=Math.random()*(window.innerHeight-50)+"px";
+  perkSpawn.style.display="block";
+  perkSpawn.onclick=()=>{ perk.action(); perkSpawn.style.display="none"; };
+}
+setInterval(()=>{ if(Math.random()<0.07 && perkSpawn.style.display==="none") spawnPerk(); },2000);
+
+updateShop();
+</script>
 </body>
 </html>
