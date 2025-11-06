@@ -2,25 +2,39 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Points Counter</title>
+  <title>Idle Clicker Simulator</title>
   <style>
     body {
+      margin: 0;
+      padding: 0;
+      background: #0b0b0b;
+      color: white;
+      font-family: Arial, sans-serif;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+    .left {
+      flex: 1;
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      height: 100vh;
-      background-color: #0b0b0b;
-      color: white;
-      font-family: Arial, sans-serif;
+    }
+    .right {
+      width: 300px;
+      background: #111;
+      border-left: 2px solid #222;
+      padding: 20px;
+      overflow-y: auto;
     }
     h1 {
-      font-size: 3rem;
+      font-size: 2rem;
       margin-bottom: 20px;
     }
     button {
-      font-size: 1.5rem;
-      padding: 10px 20px;
+      font-size: 1.3rem;
+      padding: 15px 25px;
       border: none;
       border-radius: 10px;
       background-color: #007bff;
@@ -31,21 +45,77 @@
     button:hover {
       background-color: #0056b3;
     }
+    .upgrade {
+      background-color: #222;
+      border: 1px solid #333;
+      padding: 10px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .upgrade button {
+      font-size: 1rem;
+      padding: 5px 10px;
+      border-radius: 6px;
+    }
   </style>
 </head>
 <body>
-  <h1>Points: <span id="points">0</span></h1>
-  <button id="addBtn">Add Point</button>
+  <div class="left">
+    <h1>Points: <span id="points">0</span></h1>
+    <button id="addBtn">Click Me</button>
+  </div>
+  <div class="right">
+    <h2>Shop</h2>
+    <div id="shop"></div>
+  </div>
 
   <script>
     let points = 0;
+    let clickPower = 1;
     const display = document.getElementById("points");
     const btn = document.getElementById("addBtn");
+    const shop = document.getElementById("shop");
 
-    btn.addEventListener("click", () => {
-      points++;
+    const upgrades = [
+      { name: "Double Click Power", cost: 50, effect: () => { clickPower *= 2; } },
+      { name: "Auto Clicker", cost: 100, effect: () => { setInterval(() => addPoints(1), 1000); } },
+      { name: "Super Finger", cost: 500, effect: () => { clickPower += 10; } },
+    ];
+
+    function addPoints(amount) {
+      points += amount;
       display.textContent = points;
-    });
+      updateShop();
+    }
+
+    function updateShop() {
+      shop.innerHTML = "";
+      upgrades.forEach((u) => {
+        const div = document.createElement("div");
+        div.className = "upgrade";
+        div.innerHTML = `
+          <span>${u.name} - ${u.cost} pts</span>
+          <button ${points < u.cost ? "disabled" : ""}>Buy</button>
+        `;
+        const btn = div.querySelector("button");
+        btn.addEventListener("click", () => {
+          if (points >= u.cost) {
+            points -= u.cost;
+            u.effect();
+            upgrades.splice(upgrades.indexOf(u), 1); // remove after buying
+            updateShop();
+            display.textContent = points;
+          }
+        });
+        shop.appendChild(div);
+      });
+    }
+
+    btn.addEventListener("click", () => addPoints(clickPower));
+    updateShop();
   </script>
 </body>
 </html>
